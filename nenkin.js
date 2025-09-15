@@ -305,6 +305,9 @@ class Simulation {
     this.camera = new THREE.PerspectiveCamera(60, 1024 / 568, 0.1, 1000);
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.target.set(0, 2, 0); // 常に中心を見るように
+    this.controls.maxDistance = 60; // ズームアウト制限
+    this.controls.minDistance = 5; // ズームイン制限
     this.cycles = [];
     this.cycleStartOffsets = [];
     this._setup();
@@ -321,7 +324,7 @@ class Simulation {
   _setupScene() {
     this.scene.background = new THREE.Color(0x228b22);
     this.camera.position.set(0, 5, 18);
-    this.camera.lookAt(0, 2, 0);
+    this.camera.lookAt(this.controls.target);
     const renderDiv = document.createElement("div");
     renderDiv.style.width = "1024px";
     renderDiv.style.height = "568px";
@@ -346,19 +349,11 @@ class Simulation {
   }
 
   _setupInstances() {
+    // 中央に1つのインスタンスのみを生成する
     const center = new THREE.Vector3(0, 0, 0);
-    const radius = 3.5;
-    for (let i = 0; i < 20; i++) {
-      const angle = (i / 20) * Math.PI * 2 + Math.random() * 0.2;
-      const r = radius + Math.random() * 1.2 - 0.6;
-      const pos = new THREE.Vector3(center.x + Math.cos(angle) * r, 0, center.z + Math.sin(angle) * r);
-      const h = 0.13 + Math.random() * 0.04;
-      const s = 0.93 + Math.random() * 0.07;
-      const l = 0.6 + Math.random() * 0.08;
-      const color = new THREE.Color().setHSL(h, s, l);
-      this.cycles.push(new SlimeMoldCycle(this.scene, pos, color.getHex()));
-      this.cycleStartOffsets.push(Math.random() * 6);
-    }
+    const color = 0xffe066;
+    this.cycles.push(new SlimeMoldCycle(this.scene, center, color));
+    this.cycleStartOffsets.push(0);
   }
 
   _setupEventListeners() {
