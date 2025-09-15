@@ -123,8 +123,9 @@ class SlimeMoldCycle {
         const grow = (this.phaseTime - morphEnd) / (growthEndTime - morphEnd);
         this.mushroomStem.scale.y = grow;
         this.mushroomCap.scale.set(grow, grow * 0.6, grow);
-        this.mushroomStem.position.y = this.wormHeadPos.y - 1.2 + Math.sin(grow * Math.PI) * 0.2;
-        this.mushroomCap.position.y = this.wormHeadPos.y + 0.3 + Math.sin(grow * Math.PI) * 0.2;
+        // 成長中は少し上下に揺れる & 茎と傘の隙間をなくす
+        const stemTopY = this.mushroomStem.position.y + (3 / 2) * grow;
+        this.mushroomCap.position.y = stemTopY;
     }
 
     if (this.phaseTime > growthEndTime) {
@@ -143,9 +144,10 @@ class SlimeMoldCycle {
 
   _animateMorphToMushroom(morph, amoebaCenter) {
     const stemHeight = 3;
-    let stemTarget = this.wormHeadPos.clone().add(new THREE.Vector3(0, -1.2, 0));
+    const stemRadius = 0.35;
+    let stemTarget = this.wormHeadPos.clone().add(new THREE.Vector3(0, (stemHeight / 2) - 1.5, 0));
     let capTarget = stemTarget.clone().add(new THREE.Vector3(0, stemHeight / 2, 0));
-    let capRadius = 1.7, stemRadius = 0.35;
+    let capRadius = 1.7;
 
     this.wormSpheres.forEach((sphere, i) => {
       let pos = amoebaCenter.clone();
@@ -227,7 +229,7 @@ class SlimeMoldCycle {
     const groundRadius = 14.5;
     this.myceliumLines.forEach(line => {
       if (!line.mesh) {
-        const geo = new THREE.CylinderGeometry(0.05, 0.05, 1, 6);
+        const geo = new THREE.CylinderGeometry(0.1, 0.1, 1, 6);
         const mat = new THREE.MeshStandardMaterial({ color: 0xffffcc });
         line.mesh = new THREE.Mesh(geo, mat);
         this.scene.add(line.mesh);
@@ -237,11 +239,11 @@ class SlimeMoldCycle {
       line.len = grow * Math.min(2.5, maxLen);
       const dir2d = new THREE.Vector2(line.dir.x, line.dir.z).normalize();
       const mid = sporePos.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y).multiplyScalar(line.len / 2));
-      line.mesh.position.copy(mid).setY(0.1);
+      line.mesh.position.copy(mid).setY(0.5);
       line.mesh.scale.set(1, line.len, 1);
       line.mesh.lookAt(mid.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y)));
       line.mesh.visible = true;
-    }
+    });
     if (grow >= 1 && this.phaseTime > 3.5) {
       this.phase = 4; this.phaseTime = 0;
       if (!this.amoeba) {
@@ -399,7 +401,6 @@ class Simulation {
   }
 }
 
-// --- メイン処理 ---
 window.addEventListener('DOMContentLoaded', () => {
     const simulation = new Simulation();
     simulation.start();
