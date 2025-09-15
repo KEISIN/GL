@@ -123,7 +123,6 @@ class SlimeMoldCycle {
         const grow = (this.phaseTime - morphEnd) / (growthEndTime - morphEnd);
         this.mushroomStem.scale.y = grow;
         this.mushroomCap.scale.set(grow, grow * 0.6, grow);
-        // 成長中は少し上下に揺れる & 茎と傘の隙間をなくす
         const stemTopY = this.mushroomStem.position.y + (3 / 2) * grow;
         this.mushroomCap.position.y = stemTopY;
     }
@@ -226,10 +225,10 @@ class SlimeMoldCycle {
   _animatePhase3_MyceliumGrowth() {
     let grow = Math.min(1, this.phaseTime / 3.0);
     const sporePos = this.spores[0].mesh.position;
-    const groundRadius = 14.5;
+    const groundRadius = 19.5; // Corrected radius
     this.myceliumLines.forEach(line => {
       if (!line.mesh) {
-        const geo = new THREE.CylinderGeometry(0.1, 0.1, 1, 6);
+        const geo = new THREE.CylinderGeometry(0.05, 0.05, 1, 6);
         const mat = new THREE.MeshStandardMaterial({ color: 0xffffcc });
         line.mesh = new THREE.Mesh(geo, mat);
         this.scene.add(line.mesh);
@@ -239,7 +238,7 @@ class SlimeMoldCycle {
       line.len = grow * Math.min(2.5, maxLen);
       const dir2d = new THREE.Vector2(line.dir.x, line.dir.z).normalize();
       const mid = sporePos.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y).multiplyScalar(line.len / 2));
-      line.mesh.position.copy(mid).setY(0.5);
+      line.mesh.position.copy(mid).setY(0.1);
       line.mesh.scale.set(1, line.len, 1);
       line.mesh.lookAt(mid.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y)));
       line.mesh.visible = true;
@@ -341,20 +340,7 @@ class Simulation {
   }
 
   _setupGround() {
-    const groundGeo = new THREE.PlaneGeometry(40, 40);
-    const groundShaderMat = new THREE.ShaderMaterial({
-      uniforms: {
-        color1: { value: new THREE.Color(0x444444) },
-        color2: { value: new THREE.Color(0x222222) },
-      },
-      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-      fragmentShader: `uniform vec3 color1; uniform vec3 color2; varying vec2 vUv; void main() { float dist = clamp(length(vUv - vec2(0.5, 0.5)) * 2.0, 0.0, 1.0); gl_FragColor = vec4(mix(color1, color2, dist), 1.0); }`,
-      side: THREE.DoubleSide,
-    });
-    const ground = new THREE.Mesh(groundGeo, groundShaderMat);
-    ground.rotation.x = -Math.PI / 2;
-    this.scene.add(ground);
-    const grid = new THREE.GridHelper(30, 30, 0x888888, 0x444444);
+    const grid = new THREE.GridHelper(40, 40, 0x888888, 0x444444);
     grid.position.y = 0.01;
     this.scene.add(grid);
   }
