@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 /**
  * 粘菌のライフサイクルの一連の流れを管理するクラス
@@ -84,7 +84,6 @@ class SlimeMoldCycle {
   _animatePhase0_WormAndMushroom(t) {
     let gatherTime = 12.0, morphStart = 18.0, morphEnd = 24.0, growthEndTime = morphEnd + 8.0;
 
-    // --- Worm animation ---
     if (this.phaseTime <= morphEnd) {
       const r = 3.5 + Math.sin(t * 0.7 + this.basePos.x) * 1.2 + Math.sin(t * 0.3 + this.basePos.z) * 0.7;
       this.wormHeadPos.x = this.basePos.x + Math.cos(t * 0.6 + Math.sin(t * 0.2 + this.basePos.y)) * r;
@@ -116,9 +115,8 @@ class SlimeMoldCycle {
       if (morph > 0) this._animateMorphToMushroom(morph, amoebaCenter);
     }
 
-    // --- Mushroom Growth Animation ---
     if (this.phaseTime > morphEnd && this.phaseTime <= growthEndTime) {
-        if(this.wormSpheres[0].visible) {
+        if(this.wormSpheres.length > 0 && this.wormSpheres[0].visible) {
             this.wormSpheres.forEach(s => s.visible = false);
             this.amoeba.visible = false;
         }
@@ -126,10 +124,9 @@ class SlimeMoldCycle {
         this.mushroomStem.scale.y = grow;
         this.mushroomCap.scale.set(grow, grow * 0.6, grow);
         this.mushroomStem.position.y = this.wormHeadPos.y - 1.2 + Math.sin(grow * Math.PI) * 0.2;
-        this.mushroomCap.position.y = this.wormHeadPos.y + 0.7 + Math.sin(grow * Math.PI) * 0.2;
+        this.mushroomCap.position.y = this.wormHeadPos.y + 0.3 + Math.sin(grow * Math.PI) * 0.2;
     }
 
-    // --- Transition to next phase ---
     if (this.phaseTime > growthEndTime) {
       this.phase = 2; this.phaseTime = 0;
       this.spores = [];
@@ -145,9 +142,10 @@ class SlimeMoldCycle {
   }
 
   _animateMorphToMushroom(morph, amoebaCenter) {
+    const stemHeight = 3;
     let stemTarget = this.wormHeadPos.clone().add(new THREE.Vector3(0, -1.2, 0));
-    let capTarget = this.wormHeadPos.clone().add(new THREE.Vector3(0, 0.7, 0));
-    let capRadius = 1.7, stemRadius = 0.5, stemHeight = 3;
+    let capTarget = stemTarget.clone().add(new THREE.Vector3(0, stemHeight / 2, 0));
+    let capRadius = 1.7, stemRadius = 0.35;
 
     this.wormSpheres.forEach((sphere, i) => {
       let pos = amoebaCenter.clone();
@@ -181,12 +179,12 @@ class SlimeMoldCycle {
     this.amoeba.material.opacity = 0.85 * (1 - morph);
 
     if (!this.mushroomCap && !this.mushroomStem) {
-      const stemGeo = new THREE.CylinderGeometry(0.5, 0.7, 3, 16);
+      const stemGeo = new THREE.CylinderGeometry(stemRadius, stemRadius * 1.2, stemHeight, 16);
       const stemMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, transparent: true, opacity: 0 });
       this.mushroomStem = new THREE.Mesh(stemGeo, stemMat);
       this.mushroomStem.position.copy(stemTarget);
       this.scene.add(this.mushroomStem);
-      const capGeo = new THREE.SphereGeometry(1.7, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+      const capGeo = new THREE.SphereGeometry(capRadius, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
       const capMat = new THREE.MeshStandardMaterial({ color: 0xdd2222, roughness: 0.5, transparent: true, opacity: 0 });
       this.mushroomCap = new THREE.Mesh(capGeo, capMat);
       this.mushroomCap.position.copy(capTarget);
@@ -243,7 +241,7 @@ class SlimeMoldCycle {
       line.mesh.scale.set(1, line.len, 1);
       line.mesh.lookAt(mid.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y)));
       line.mesh.visible = true;
-    });
+    }
     if (grow >= 1 && this.phaseTime > 3.5) {
       this.phase = 4; this.phaseTime = 0;
       if (!this.amoeba) {
@@ -402,5 +400,7 @@ class Simulation {
 }
 
 // --- メイン処理 ---
-const simulation = new Simulation();
-simulation.start();
+window.addEventListener('DOMContentLoaded', () => {
+    const simulation = new Simulation();
+    simulation.start();
+});
