@@ -30,7 +30,7 @@ scene.add(gridHelper);
 
 // --- 設定値 ---
 const CONFIG = {
-    maxGeneration: 5, // 増殖が停止する世代
+    maxGeneration: 8, // 増殖が停止する世代
     transitionTime: 7, // 状態遷移の時間（秒）
     fadeTime: 1.5, // クロスフェードの時間（秒）
     colors: {
@@ -75,6 +75,28 @@ class SlimeMold {
         scene.add(this.object);
 
         console.log(`New mold created at generation ${this.generation}`);
+    }
+
+    /**
+     * グループ内のジオメトリとマテリアルを解放する
+     * @param {THREE.Group} group
+     */
+    disposeGroup(group) {
+        if (!group) return;
+        group.traverse((child) => {
+            if (child.isMesh) {
+                if (child.geometry) {
+                    child.geometry.dispose();
+                }
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(material => material.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            }
+        });
     }
 
     /**
@@ -246,7 +268,10 @@ class SlimeMold {
 
             if (progress >= 1.0) {
                 this.isTransitioning = false;
-                if(this.oldObject) scene.remove(this.oldObject);
+                if(this.oldObject) {
+                    scene.remove(this.oldObject);
+                    this.disposeGroup(this.oldObject);
+                }
                 this.oldObject = null;
                  // 寿命で死ぬ場合、objectはnullなので何もしない
                 if (!this.object) {
