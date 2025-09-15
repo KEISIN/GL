@@ -312,7 +312,7 @@
                   0,
                   Math.PI * 2,
                   0,
-                  Math.PI / 1.2
+                  Math.PI / 2
                 );
                 const capMat = new THREE.MeshStandardMaterial({
                   color: 0xdd2222,
@@ -331,7 +331,7 @@
                 this.mushroomStem.material.opacity = show;
                 this.mushroomCap.material.opacity = show;
                 this.mushroomStem.scale.y = show;
-                this.mushroomCap.scale.set(show, show, show);
+                this.mushroomCap.scale.set(show, show * 0.6, show);
               }
             }
 
@@ -343,7 +343,7 @@
               if (this.mushroomCap && this.mushroomStem) {
                 this.mushroomCap.material.opacity = 1;
                 this.mushroomStem.material.opacity = 1;
-                this.mushroomCap.scale.set(1, 1, 1);
+                this.mushroomCap.scale.set(1, 0.6, 1);
                 this.mushroomStem.scale.y = 1;
               }
               this.amoeba.visible = false;
@@ -352,7 +352,7 @@
             // キノコの成長
             const grow = Math.min(1, this.phaseTime / 8); // 8秒かけて成長
             this.mushroomStem.scale.y = grow;
-            this.mushroomCap.scale.set(grow, grow, grow);
+            this.mushroomCap.scale.set(grow, grow * 0.6, grow);
             this.mushroomStem.position.y = this.wormHeadPos.y - 1.2 + (1 - grow) * 1.5;
             this.mushroomCap.position.y = this.wormHeadPos.y + 0.7 + (1 - grow) * 1.5;
 
