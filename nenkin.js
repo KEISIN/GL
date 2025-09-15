@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js";
 
 /**
  * 粘菌のライフサイクルの一連の流れを管理するクラス
@@ -80,45 +81,66 @@ class SlimeMoldCycle {
     });
   }
 
-  _animatePhase0_Worm(t) {
-    let gatherTime = 12.0, morphStart = 18.0, morphEnd = 24.0;
-    const r = 3.5 + Math.sin(t * 0.7 + this.basePos.x) * 1.2 + Math.sin(t * 0.3 + this.basePos.z) * 0.7;
-    this.wormHeadPos.x = this.basePos.x + Math.cos(t * 0.6 + Math.sin(t * 0.2 + this.basePos.y)) * r;
-    this.wormHeadPos.z = this.basePos.z + Math.sin(t * 0.6 + Math.cos(t * 0.3 + this.basePos.x)) * r;
-    this.wormHeadPos.y = this.basePos.y + 1.5 + Math.sin(t * 1.2 + this.basePos.z) * 0.5 + Math.sin(t * 0.5 + this.basePos.x) * 0.2;
-    this.wormPath.unshift(this.wormHeadPos.clone());
-    if (this.wormPath.length > this.WORM_SEGMENTS * 3) this.wormPath.pop();
+  _animatePhase0_WormAndMushroom(t) {
+    let gatherTime = 12.0, morphStart = 18.0, morphEnd = 24.0, growthEndTime = morphEnd + 8.0;
 
-    let gather = (this.phaseTime > gatherTime) ? Math.min(1, (this.phaseTime - gatherTime) / (morphStart - gatherTime)) : 0;
-    const amoebaCenter = this.basePos.clone().add(new THREE.Vector3(0, 1.5, 0));
+    // --- Worm animation ---
+    if (this.phaseTime <= morphEnd) {
+      const r = 3.5 + Math.sin(t * 0.7 + this.basePos.x) * 1.2 + Math.sin(t * 0.3 + this.basePos.z) * 0.7;
+      this.wormHeadPos.x = this.basePos.x + Math.cos(t * 0.6 + Math.sin(t * 0.2 + this.basePos.y)) * r;
+      this.wormHeadPos.z = this.basePos.z + Math.sin(t * 0.6 + Math.cos(t * 0.3 + this.basePos.x)) * r;
+      this.wormHeadPos.y = this.basePos.y + 1.5 + Math.sin(t * 1.2 + this.basePos.z) * 0.5 + Math.sin(t * 0.5 + this.basePos.x) * 0.2;
+      this.wormPath.unshift(this.wormHeadPos.clone());
+      if (this.wormPath.length > this.WORM_SEGMENTS * 3) this.wormPath.pop();
 
-    this.wormSpheres.forEach((sphere, i) => {
-      const idx = Math.min(i * 3, this.wormPath.length - 1);
-      let pos = this.wormPath[idx].clone().lerp(amoebaCenter, gather);
-      sphere.position.copy(pos);
-      let scale = 1.1 - (i / this.WORM_SEGMENTS) * 0.7 + Math.sin(t * 2 + i) * 0.05;
-      sphere.scale.setScalar(scale * (1 - gather) + 1.5 * gather);
-      const h = 0.13 + Math.sin(t * 0.5 + i * 0.1 + this.basePos.x) * 0.03;
-      sphere.material.color.setHSL(h, 0.95, 0.65);
-      sphere.material.opacity = 0.85 * (1 - gather * 0.5);
-      sphere.material.emissive.set(sphere.material.color);
-      sphere.visible = true;
-    });
+      let gather = (this.phaseTime > gatherTime) ? Math.min(1, (this.phaseTime - gatherTime) / (morphStart - gatherTime)) : 0;
+      const amoebaCenter = this.basePos.clone().add(new THREE.Vector3(0, 1.5, 0));
 
-    this.amoeba.visible = gather === 1;
-    if (gather === 1) this.amoeba.position.copy(amoebaCenter);
+      this.wormSpheres.forEach((sphere, i) => {
+        const idx = Math.min(i * 3, this.wormPath.length - 1);
+        let pos = this.wormPath[idx].clone().lerp(amoebaCenter, gather);
+        sphere.position.copy(pos);
+        let scale = 1.1 - (i / this.WORM_SEGMENTS) * 0.7 + Math.sin(t * 2 + i) * 0.05;
+        sphere.scale.setScalar(scale * (1 - gather) + 1.5 * gather);
+        const h = 0.13 + Math.sin(t * 0.5 + i * 0.1 + this.basePos.x) * 0.03;
+        sphere.material.color.setHSL(h, 0.95, 0.65);
+        sphere.material.opacity = 0.85 * (1 - gather * 0.5);
+        sphere.material.emissive.set(sphere.material.color);
+        sphere.visible = true;
+      });
 
-    let morph = (this.phaseTime > morphStart) ? Math.min(1, (this.phaseTime - morphStart) / (morphEnd - morphStart)) : 0;
-    if (morph > 0) this._animateMorphToMushroom(morph, amoebaCenter);
+      this.amoeba.visible = gather === 1;
+      if (gather === 1) this.amoeba.position.copy(amoebaCenter);
 
-    if (this.phaseTime > morphEnd) {
-      this.phase = 1; this.phaseTime = 0;
-      this.wormSpheres.forEach(s => s.visible = false);
-      if (this.mushroomCap && this.mushroomStem) {
-        this.mushroomCap.material.opacity = 1; this.mushroomStem.material.opacity = 1;
-        this.mushroomCap.scale.set(1, 0.6, 1); this.mushroomStem.scale.y = 1;
+      let morph = (this.phaseTime > morphStart) ? Math.min(1, (this.phaseTime - morphStart) / (morphEnd - morphStart)) : 0;
+      if (morph > 0) this._animateMorphToMushroom(morph, amoebaCenter);
+    }
+
+    // --- Mushroom Growth Animation ---
+    if (this.phaseTime > morphEnd && this.phaseTime <= growthEndTime) {
+        if(this.wormSpheres[0].visible) {
+            this.wormSpheres.forEach(s => s.visible = false);
+            this.amoeba.visible = false;
+        }
+        const grow = (this.phaseTime - morphEnd) / (growthEndTime - morphEnd);
+        this.mushroomStem.scale.y = grow;
+        this.mushroomCap.scale.set(grow, grow * 0.6, grow);
+        this.mushroomStem.position.y = this.wormHeadPos.y - 1.2 + Math.sin(grow * Math.PI) * 0.2;
+        this.mushroomCap.position.y = this.wormHeadPos.y + 0.7 + Math.sin(grow * Math.PI) * 0.2;
+    }
+
+    // --- Transition to next phase ---
+    if (this.phaseTime > growthEndTime) {
+      this.phase = 2; this.phaseTime = 0;
+      this.spores = [];
+      for (let i = 0; i < 18; i++) {
+        const angle = (i / 18) * Math.PI * 2;
+        const dir = new THREE.Vector3(Math.cos(angle), 0.5 + Math.random() * 0.5, Math.sin(angle)).normalize();
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffcc }));
+        mesh.position.copy(this.mushroomCap.position);
+        this.scene.add(mesh);
+        this.spores.push({ mesh, pos: this.mushroomCap.position.clone(), dir, t: 0 });
       }
-      this.amoeba.visible = false;
     }
   }
 
@@ -175,25 +197,6 @@ class SlimeMoldCycle {
     this.mushroomStem.scale.y = morph; this.mushroomCap.scale.set(morph, morph * 0.6, morph);
   }
 
-  _animatePhase1_MushroomGrowth() {
-    const grow = Math.min(1, this.phaseTime / 8);
-    this.mushroomStem.scale.y = grow;
-    this.mushroomCap.scale.set(grow, grow * 0.6, grow);
-    this.mushroomStem.position.y = this.wormHeadPos.y - 1.2 + (1 - grow) * 1.5;
-    this.mushroomCap.position.y = this.wormHeadPos.y + 0.7 + (1 - grow) * 1.5;
-    if (grow >= 1 && this.phaseTime > 8) {
-      this.phase = 2; this.phaseTime = 0; this.spores = [];
-      for (let i = 0; i < 18; i++) {
-        const angle = (i / 18) * Math.PI * 2;
-        const dir = new THREE.Vector3(Math.cos(angle), 0.5 + Math.random() * 0.5, Math.sin(angle)).normalize();
-        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffcc }));
-        mesh.position.copy(this.mushroomCap.position);
-        this.scene.add(mesh);
-        this.spores.push({ mesh, pos: this.mushroomCap.position.clone(), dir, t: 0 });
-      }
-    }
-  }
-
   _animatePhase2_SporeRelease(dt) {
     let allGone = true;
     this.spores.forEach(s => {
@@ -226,7 +229,7 @@ class SlimeMoldCycle {
     const groundRadius = 14.5;
     this.myceliumLines.forEach(line => {
       if (!line.mesh) {
-        const geo = new THREE.CylinderGeometry(0.04, 0.04, 1, 6);
+        const geo = new THREE.CylinderGeometry(0.05, 0.05, 1, 6);
         const mat = new THREE.MeshStandardMaterial({ color: 0xffffcc });
         line.mesh = new THREE.Mesh(geo, mat);
         this.scene.add(line.mesh);
@@ -236,7 +239,7 @@ class SlimeMoldCycle {
       line.len = grow * Math.min(2.5, maxLen);
       const dir2d = new THREE.Vector2(line.dir.x, line.dir.z).normalize();
       const mid = sporePos.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y).multiplyScalar(line.len / 2));
-      line.mesh.position.copy(mid).setY(0.08);
+      line.mesh.position.copy(mid).setY(0.1);
       line.mesh.scale.set(1, line.len, 1);
       line.mesh.lookAt(mid.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y)));
       line.mesh.visible = true;
@@ -286,8 +289,7 @@ class SlimeMoldCycle {
   animate(t, dt) {
     this.phaseTime += dt;
     switch (this.phase) {
-      case 0: this._animatePhase0_Worm(t); break;
-      case 1: this._animatePhase1_MushroomGrowth(); break;
+      case 0: this._animatePhase0_WormAndMushroom(t); break;
       case 2: this._animatePhase2_SporeRelease(dt); break;
       case 3: this._animatePhase3_MyceliumGrowth(); break;
       case 4: this._animatePhase4_AmoebaGrowth(); break;
@@ -303,6 +305,7 @@ class Simulation {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(60, 1024 / 568, 0.1, 1000);
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.cycles = [];
     this.cycleStartOffsets = [];
     this._setup();
@@ -373,17 +376,7 @@ class Simulation {
   }
 
   _setupEventListeners() {
-    let camTarget = this.camera.position.clone();
-    const camStep = 0.7;
-    window.addEventListener("keydown", (event) => {
-      switch (event.key) {
-        case "ArrowUp": camTarget.z -= camStep; break;
-        case "ArrowDown": camTarget.z += camStep; break;
-        case "ArrowLeft": camTarget.x -= camStep; break;
-        case "ArrowRight": camTarget.x += camStep; break;
-      }
-    });
-    this.camTarget = camTarget;
+    window.addEventListener("resize", () => this.onWindowResize());
   }
 
   start() {
@@ -392,8 +385,7 @@ class Simulation {
 
   animate = () => {
     requestAnimationFrame(this.animate);
-    this.camera.position.lerp(this.camTarget, 0.15);
-    this.camera.lookAt(0, 2, 0);
+    this.controls.update();
     const t = performance.now() * 0.001;
     const dt = 0.016; // Assuming 60fps
     this.cycles.forEach((cycle, i) => {
@@ -412,4 +404,3 @@ class Simulation {
 // --- メイン処理 ---
 const simulation = new Simulation();
 simulation.start();
-window.addEventListener("resize", () => simulation.onWindowResize());
