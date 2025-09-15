@@ -39,10 +39,7 @@ const CONFIG = {
         amoeba: 0xffa500, // オレンジ
         fruitingBody: 0xff4500, // 赤みがかったオレンジ
     },
-    material: {
-        metalness: 0.5,
-        roughness: 0.5,
-    }
+    material: {}
 };
 
 // --- 粘菌のライフサイクル状態 ---
@@ -121,8 +118,8 @@ class SlimeMold {
         console.log("State: Spore");
         this.state = STATE.SPORE;
         const group = new THREE.Group();
-        const geometry = new THREE.SphereGeometry(0.2, 16, 16);
-        const material = new THREE.MeshStandardMaterial({
+        const geometry = new THREE.SphereGeometry(0.2, 8, 8); // 簡略化
+        const material = new THREE.MeshLambertMaterial({
             color: CONFIG.colors.spore,
             ...CONFIG.material,
             transparent: true,
@@ -146,8 +143,8 @@ class SlimeMold {
             new THREE.Vector3(2, 0, 0),
             new THREE.Vector3(3, 0, -1.5),
         ]);
-        const geometry = new THREE.TubeGeometry(curve, 20, 0.1, 8, false);
-        const material = new THREE.MeshStandardMaterial({
+        const geometry = new THREE.TubeGeometry(curve, 10, 0.1, 5, false); // 簡略化
+        const material = new THREE.MeshLambertMaterial({
             color: CONFIG.colors.worm,
             ...CONFIG.material,
             transparent: true,
@@ -165,17 +162,17 @@ class SlimeMold {
         console.log("State: Amoeba");
         this.state = STATE.AMOEBA;
         const group = new THREE.Group();
-        const material = new THREE.MeshStandardMaterial({
+        const material = new THREE.MeshLambertMaterial({
             color: CONFIG.colors.amoeba,
             ...CONFIG.material,
             transparent: true,
             opacity: 0.0
         });
-        const sphereCount = 20;
+        const sphereCount = 15; // 少し減らす
         for (let i = 0; i < sphereCount; i++) {
             const radius = THREE.MathUtils.randFloat(0.2, 0.5);
-            const geometry = new THREE.SphereGeometry(radius, 16, 16);
-            const sphere = new THREE.Mesh(geometry.clone(), material.clone());
+            const geometry = new THREE.SphereGeometry(radius, 8, 8); // 簡略化
+            const sphere = new THREE.Mesh(geometry, material); // material.clone() を削除
             sphere.position.set(
                 THREE.MathUtils.randFloatSpread(2.5),
                 THREE.MathUtils.randFloatSpread(2.5),
@@ -193,18 +190,18 @@ class SlimeMold {
         console.log("State: Fruiting Body");
         this.state = STATE.FRUITING_BODY;
         const group = new THREE.Group();
-        const material = new THREE.MeshStandardMaterial({
+        const material = new THREE.MeshLambertMaterial({
             color: CONFIG.colors.fruitingBody,
             ...CONFIG.material,
             transparent: true,
             opacity: 0.0
         });
         const stalkHeight = 3.5;
-        const stalkGeometry = new THREE.CylinderGeometry(0.15, 0.25, stalkHeight, 16);
-        const stalk = new THREE.Mesh(stalkGeometry, material.clone());
+        const stalkGeometry = new THREE.CylinderGeometry(0.15, 0.25, stalkHeight, 8); // 簡略化
+        const stalk = new THREE.Mesh(stalkGeometry, material); // material.clone() を削除
         stalk.position.y = stalkHeight / 2;
-        const capGeometry = new THREE.SphereGeometry(1.2, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.8);
-        const cap = new THREE.Mesh(capGeometry, material.clone());
+        const capGeometry = new THREE.SphereGeometry(1.2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 1.8); // 簡略化
+        const cap = new THREE.Mesh(capGeometry, material); // material.clone() を削除
         cap.position.y = stalkHeight;
         group.add(stalk);
         group.add(cap);
