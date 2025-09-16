@@ -225,17 +225,14 @@ class SlimeMoldCycle {
   _animatePhase3_MyceliumGrowth() {
     let grow = Math.min(1, this.phaseTime / 3.0);
     const sporePos = this.spores[0].mesh.position;
-    const groundRadius = 19.5; // Corrected radius
     this.myceliumLines.forEach(line => {
       if (!line.mesh) {
-        const geo = new THREE.CylinderGeometry(0.05, 0.05, 1, 6);
+        const geo = new THREE.CylinderGeometry(0.1, 0.1, 1, 6);
         const mat = new THREE.MeshStandardMaterial({ color: 0xffffcc });
         line.mesh = new THREE.Mesh(geo, mat);
         this.scene.add(line.mesh);
       }
-      const center2spore = new THREE.Vector2(sporePos.x, sporePos.z).length();
-      const maxLen = Math.max(0, groundRadius - center2spore);
-      line.len = grow * Math.min(2.5, maxLen);
+      line.len = grow * 15.0; // Grow much longer
       const dir2d = new THREE.Vector2(line.dir.x, line.dir.z).normalize();
       const mid = sporePos.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y).multiplyScalar(line.len / 2));
       line.mesh.position.copy(mid).setY(0.1);
