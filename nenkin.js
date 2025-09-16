@@ -224,7 +224,7 @@ class SlimeMoldCycle {
 
   _animatePhase3_MyceliumGrowth() {
     let grow = Math.min(1, this.phaseTime / 3.0);
-    const originPos = this.basePos.clone(); // Use the instance's base position
+    const originPos = this.basePos.clone();
     this.myceliumLines.forEach(line => {
       if (!line.mesh) {
         const geo = new THREE.CylinderGeometry(0.1, 0.1, 1, 6);
@@ -233,11 +233,15 @@ class SlimeMoldCycle {
         this.scene.add(line.mesh);
       }
       line.len = grow * 15.0;
-      const dir2d = new THREE.Vector2(line.dir.x, line.dir.z).normalize();
-      const mid = originPos.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y).multiplyScalar(line.len / 2));
+      const mid = originPos.clone().add(line.dir.clone().multiplyScalar(line.len / 2));
       line.mesh.position.copy(mid).setY(0.1);
       line.mesh.scale.set(1, line.len, 1);
-      line.mesh.lookAt(mid.clone().add(new THREE.Vector3(dir2d.x, 0, dir2d.y)));
+
+      const quaternion = new THREE.Quaternion();
+      const up = new THREE.Vector3(0, 1, 0);
+      quaternion.setFromUnitVectors(up, line.dir);
+      line.mesh.quaternion.copy(quaternion);
+
       line.mesh.visible = true;
     });
     if (grow >= 1 && this.phaseTime > 3.5) {
@@ -248,7 +252,7 @@ class SlimeMoldCycle {
         this.amoeba = new THREE.Mesh(sphereGeo, sphereMat);
         this.scene.add(this.amoeba);
       }
-      this.amoeba.position.copy(this.spores[0].mesh.position); // Still appears where spore landed
+      this.amoeba.position.copy(this.spores[0].mesh.position);
       this.amoeba.scale.set(0.1, 0.1, 0.1);
       this.amoeba.visible = true;
     }
@@ -343,11 +347,19 @@ class Simulation {
   }
 
   _setupInstances() {
-    // 中央に1つのインスタンスのみを生成する
     const center = new THREE.Vector3(0, 0, 0);
-    const color = 0xffe066;
-    this.cycles.push(new SlimeMoldCycle(this.scene, center, color));
-    this.cycleStartOffsets.push(0);
+    const radius = 3.5;
+    for (let i = 0; i < 20; i++) {
+      const angle = (i / 20) * Math.PI * 2 + Math.random() * 0.2;
+      const r = radius + Math.random() * 1.2 - 0.6;
+      const pos = new THREE.Vector3(center.x + Math.cos(angle) * r, 0, center.z + Math.sin(angle) * r);
+      const h = 0.13 + Math.random() * 0.04;
+      const s = 0.93 + Math.random() * 0.07;
+      const l = 0.6 + Math.random() * 0.08;
+      const color = new THREE.Color().setHSL(h, s, l);
+      this.cycles.push(new SlimeMoldCycle(this.scene, pos, color.getHex()));
+      this.cycleStartOffsets.push(Math.random() * 6);
+    }
   }
 
   _setupEventListeners() {
