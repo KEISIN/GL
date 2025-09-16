@@ -239,52 +239,64 @@ class SlimeMoldCycle {
 
       const quaternion = new THREE.Quaternion();
       const up = new THREE.Vector3(0, 1, 0);
-      quaternion.setFromUnitVectors(up, line.dir);
+      quaternion.setFromUnitVectors(up, line.dir.clone().normalize());
       line.mesh.quaternion.copy(quaternion);
 
       line.mesh.visible = true;
     });
     if (grow >= 1 && this.phaseTime > 3.5) {
-      this.phase = 4; this.phaseTime = 0;
-      if (!this.amoeba) {
-        const sphereGeo = new THREE.SphereGeometry(1.5, 32, 32);
-        const sphereMat = new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0.85, emissive: this.color, emissiveIntensity: 0.5 });
-        this.amoeba = new THREE.Mesh(sphereGeo, sphereMat);
-        this.scene.add(this.amoeba);
-      }
-      this.amoeba.position.copy(this.spores[0].mesh.position);
-      this.amoeba.scale.set(0.1, 0.1, 0.1);
-      this.amoeba.visible = true;
+      this.phase = 5; // Transition to new gathering phase
+      this.phaseTime = 0;
     }
   }
 
-  _animatePhase4_AmoebaGrowth() {
-    let appear = Math.min(1, this.phaseTime / 2.0);
-    this.amoeba.scale.setScalar(appear);
-    this.myceliumLines.forEach(line => {
-      if (line.mesh) line.mesh.visible = (appear < 0.8);
-    });
-    if (appear >= 1 && this.phaseTime > 2.2) {
-      this.phase = 0; this.phaseTime = 0;
+  _animatePhase5_MyceliumGather() {
+      let gatherProgress = Math.min(1, this.phaseTime / 2.0); // 2 seconds to gather
+
+      // Make amoeba appear and grow
+      if (!this.amoeba) {
+        const sphereGeo = new THREE.SphereGeometry(1.5, 32, 32);
+        const sphereMat = new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0, emissive: this.color, emissiveIntensity: 0.5 });
+        this.amoeba = new THREE.Mesh(sphereGeo, sphereMat);
+        this.amoeba.position.copy(this.basePos).setY(1.5);
+        this.scene.add(this.amoeba);
+      }
+      this.amoeba.visible = true;
+      this.amoeba.material.opacity = gatherProgress;
+      this.amoeba.scale.setScalar(gatherProgress * 1.5);
+
+      // Shrink mycelium
       this.myceliumLines.forEach(line => {
-        if (line.mesh) {
-          this.scene.remove(line.mesh);
-          line.mesh.geometry.dispose();
-          line.mesh.material.dispose();
-        }
+          if (line.mesh) {
+              const currentLen = (1 - gatherProgress) * 15.0;
+              line.mesh.scale.set(1, currentLen, 1);
+              const mid = this.basePos.clone().add(line.dir.clone().multiplyScalar(currentLen / 2));
+              line.mesh.position.copy(mid).setY(0.1);
+          }
       });
-      this.myceliumLines = [];
-      this.wormHeadPos.copy(this.amoeba.position);
-      this.wormPath = Array(this.WORM_SEGMENTS * 3).fill(this.wormHeadPos.clone());
-      this.wormSpheres.forEach(s => s.visible = true);
-      this.spores.forEach(s => {
-        this.scene.remove(s.mesh);
-        s.mesh.geometry.dispose();
-        s.mesh.material.dispose();
-      });
-      this.spores = [];
-    }
+
+      if (gatherProgress >= 1) {
+          this.phase = 0; this.phaseTime = 0;
+          this.myceliumLines.forEach(line => {
+              if (line.mesh) {
+                  this.scene.remove(line.mesh);
+                  line.mesh.geometry.dispose();
+                  line.mesh.material.dispose();
+              }
+          });
+          this.myceliumLines = [];
+          this.wormHeadPos.copy(this.amoeba.position);
+          this.wormPath = Array(this.WORM_SEGMENTS * 3).fill(this.wormHeadPos.clone());
+          this.wormSpheres.forEach(s => s.visible = true);
+          this.spores.forEach(s => {
+              this.scene.remove(s.mesh);
+              s.mesh.geometry.dispose();
+              s.mesh.material.dispose();
+          });
+          this.spores = [];
+      }
   }
+
 
   animate(t, dt) {
     this.phaseTime += dt;
@@ -292,7 +304,7 @@ class SlimeMoldCycle {
       case 0: this._animatePhase0_WormAndMushroom(t); break;
       case 2: this._animatePhase2_SporeRelease(dt); break;
       case 3: this._animatePhase3_MyceliumGrowth(); break;
-      case 4: this._animatePhase4_AmoebaGrowth(); break;
+      case 5: this._animatePhase5_MyceliumGather(); break;
     }
   }
 }
