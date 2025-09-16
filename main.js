@@ -19,16 +19,48 @@ controls.enableDamping = true;
 
 // 星のジオメトリを作成
 const starGeometry = new THREE.BufferGeometry();
-const starCount = 10000;
+const starCount = 200000;
 
 const positions = new Float32Array(starCount * 3);
 const colors = new Float32Array(starCount * 3);
 
+const clusterCenters = [
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(400, 200, -300),
+    new THREE.Vector3(-350, -250, 250),
+    new THREE.Vector3(250, -300, -400),
+    new THREE.Vector3(-200, 350, 300),
+    new THREE.Vector3(100, 100, 200),
+];
+const numClusters = clusterCenters.length;
+
+// Box-Muller transform to get a normal distribution (provides a pair of random numbers)
+function getBoxMullerTransform() {
+    let u = 0, v = 0;
+    while(u === 0) u = Math.random();
+    while(v === 0) v = Math.random();
+    const R = Math.sqrt(-2.0 * Math.log(u));
+    const theta = 2.0 * Math.PI * v;
+    return [R * Math.cos(theta), R * Math.sin(theta)];
+}
+
 for (let i = 0; i < starCount; i++) {
-    // 位置をランダムに設定
-    positions[i * 3] = (Math.random() - 0.5) * 1000;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+    // Pick a random cluster
+    const cluster = clusterCenters[Math.floor(Math.random() * numClusters)];
+
+    // Generate position with a Gaussian distribution around the cluster center
+    const stdDev = 100; // Standard deviation - controls the spread of the cluster
+
+    const [rand1, rand2] = getBoxMullerTransform();
+    const rand3 = getBoxMullerTransform()[0]; // We only need one from the second pair
+
+    const x = cluster.x + rand1 * stdDev;
+    const y = cluster.y + rand2 * stdDev;
+    const z = cluster.z + rand3 * stdDev;
+
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
 
     // 色をランダムに設定
     colors[i * 3] = Math.random();
