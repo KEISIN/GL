@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createNoise3D } from 'simplex-noise';
 
 // Initialize the scene, camera, and renderer
 const scene = new THREE.Scene();
@@ -24,51 +25,42 @@ const fadeVelocities = new Float32Array(particleCount * 3); // x, y, z for fadin
 
 const color = new THREE.Color();
 
-// --- Cosmic Web Structure ---
-const clusterCount = 7;
-const clusterCenters = [];
-const clusterSpread = 1.0; // How spread out the cluster centers are
-for (let i = 0; i < clusterCount; i++) {
-    clusterCenters.push(
-        new THREE.Vector3(
-            (Math.random() - 0.5) * clusterSpread,
-            (Math.random() - 0.5) * clusterSpread,
-            (Math.random() - 0.5) * clusterSpread
-        )
-    );
-}
+// --- Filament Structure using Simplex Noise ---
+const noise3D = createNoise3D(Math.random);
+const noiseFrequency = 2.0;
+const noiseThreshold = 0.3;
+const generationVolume = 2.0; // The size of the volume to generate points in
 
-const particleSpread = 0.2; // How spread out particles are within a cluster
-for (let i = 0; i < particleCount; i++) {
-    const i3 = i * 3;
+let currentParticles = 0;
+while (currentParticles < particleCount) {
+    // Generate a random point in a cube
+    const x = (Math.random() - 0.5) * generationVolume;
+    const y = (Math.random() - 0.5) * generationVolume;
+    const z = (Math.random() - 0.5) * generationVolume;
 
-    // Pick a random cluster
-    const cluster = clusterCenters[Math.floor(Math.random() * clusterCount)];
+    // Get the noise value at that point
+    const noiseValue = noise3D(x * noiseFrequency, y * noiseFrequency, z * noiseFrequency);
 
-    // Generate a random point within a sphere for the cluster
-    const radius = (particleSpread / 2) * Math.cbrt(Math.random());
-    const theta = Math.random() * 2 * Math.PI;
-    const phi = Math.acos(2 * Math.random() - 1);
+    // If the noise value is above the threshold, accept the particle
+    if (noiseValue > noiseThreshold) {
+        const i3 = currentParticles * 3;
+        positions[i3] = x;
+        positions[i3 + 1] = y;
+        positions[i3 + 2] = z;
 
-    const x = radius * Math.sin(phi) * Math.cos(theta);
-    const y = radius * Math.sin(phi) * Math.sin(theta);
-    const z = radius * Math.cos(phi);
+        // Assign a fully random base color
+        const baseColor = new THREE.Color(Math.random() * 0xffffff);
+        baseColors[i3] = baseColor.r;
+        baseColors[i3 + 1] = baseColor.g;
+        baseColors[i3 + 2] = baseColor.b;
 
-    positions[i3] = cluster.x + x;
-    positions[i3 + 1] = cluster.y + y;
-    positions[i3 + 2] = cluster.z + z;
+        // Set initial color
+        colors[i3] = baseColor.r;
+        colors[i3 + 1] = baseColor.g;
+        colors[i3 + 2] = baseColor.b;
 
-    // Assign a fully random base color
-    const baseColor = new THREE.Color(Math.random() * 0xffffff);
-
-    baseColors[i3] = baseColor.r;
-    baseColors[i3 + 1] = baseColor.g;
-    baseColors[i3 + 2] = baseColor.b;
-
-    // Set initial color
-    colors[i3] = baseColor.r;
-    colors[i3 + 1] = baseColor.g;
-    colors[i3 + 2] = baseColor.b;
+        currentParticles++;
+    }
 }
 
 // Create a read-only copy of initial positions for reference
