@@ -41,12 +41,21 @@ const particleSpread = 0.2; // How spread out particles are within a cluster
 for (let i = 0; i < particleCount; i++) {
     const i3 = i * 3;
 
-    // Pick a random cluster and generate a position near it
+    // Pick a random cluster
     const cluster = clusterCenters[Math.floor(Math.random() * clusterCount)];
 
-    positions[i3] = cluster.x + (Math.random() - 0.5) * particleSpread;
-    positions[i3 + 1] = cluster.y + (Math.random() - 0.5) * particleSpread;
-    positions[i3 + 2] = cluster.z + (Math.random() - 0.5) * particleSpread;
+    // Generate a random point within a sphere for the cluster
+    const radius = (particleSpread / 2) * Math.cbrt(Math.random());
+    const theta = Math.random() * 2 * Math.PI;
+    const phi = Math.acos(2 * Math.random() - 1);
+
+    const x = radius * Math.sin(phi) * Math.cos(theta);
+    const y = radius * Math.sin(phi) * Math.sin(theta);
+    const z = radius * Math.cos(phi);
+
+    positions[i3] = cluster.x + x;
+    positions[i3 + 1] = cluster.y + y;
+    positions[i3 + 2] = cluster.z + z;
 
     // Assign a fully random base color
     const baseColor = new THREE.Color(Math.random() * 0xffffff);
