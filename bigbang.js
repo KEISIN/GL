@@ -20,6 +20,7 @@ const geometry = new THREE.BufferGeometry();
 const positions = new Float32Array(particleCount * 3); // x, y, z
 const colors = new Float32Array(particleCount * 3); // r, g, b (final color)
 const baseColors = new Float32Array(particleCount * 3); // r, g, b (initial random color)
+const fadeVelocities = new Float32Array(particleCount * 3); // x, y, z for fading
 
 const color = new THREE.Color();
 
@@ -76,11 +77,13 @@ const initialPositions = new Float32Array(positions);
 geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 geometry.setAttribute('baseColor', new THREE.BufferAttribute(baseColors, 3));
+geometry.setAttribute('fadeVelocity', new THREE.BufferAttribute(fadeVelocities, 3));
 
 const material = new THREE.PointsMaterial({
     size: 0.1,
     vertexColors: true,
-    sizeAttenuation: true
+    sizeAttenuation: true,
+    transparent: true
 });
 
 const particles = new THREE.Points(geometry, material);
@@ -101,6 +104,7 @@ controls.dampingFactor = 0.05;
 
 
 // Animation state
+let animationState = 'expanding'; // expanding, fading
 let expansionFactor = 0.01;
 const maxExpansion = 100.0; // We can use this to normalize color
 const expansionSpeed = 0.055;
@@ -109,61 +113,93 @@ const clock = new THREE.Clock();
 let animationId;
 
 function animate() {
-    // Stop after 30 seconds
-    if (clock.getElapsedTime() > 30) {
-        particles.visible = false; // Make particles disappear
-        renderer.render(scene, camera); // Final render to show the disappearance
-        cancelAnimationFrame(animationId);
-        return;
-    }
-
     animationId = requestAnimationFrame(animate);
 
-    // Always expanding
-    expansionFactor += expansionSpeed;
+    // State machine
+    if (animationState === 'expanding') {
+        // Switch to fading after 30 seconds
+        if (clock.getElapsedTime() > 30) {
+            animationState = 'fading';
+        }
 
-    const positionsArray = particles.geometry.attributes.position.array;
-    const colorsArray = particles.geometry.attributes.color.array;
-    const baseColorsArray = particles.geometry.attributes.baseColor.array;
+        // Expansion logic
+        expansionFactor += expansionSpeed;
 
-    const redshiftColor = new THREE.Color();
+    } else if (animationState === 'fading') {
+        const velocities = particles.geometry.attributes.fadeVelocity;
+        // Check if velocities have been initialized for this fading phase
+        if (velocities.array[0] === 0) { // A simple check, assumes first velocity component is non-zero
+            const velocitySpread = 0.1;
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                velocities.array[i3] = (Math.random() - 0.5) * velocitySpread;
+                velocities.array[i3 + 1] = (Math.random() - 0.5) * velocitySpread;
+                velocities.array[i3 + 2] = (Math.random() - 0.5) * velocitySpread;
+            }
+        }
 
-    for (let i = 0; i < particleCount; i++) {
-        const i3 = i * 3;
+        // Fade out the material
+        particles.material.opacity -= 0.005;
 
-        const x = initialPositions[i3];
-        const y = initialPositions[i3 + 1];
-        const z = initialPositions[i3 + 2];
+        // Stop animation when faded out
+        if (particles.material.opacity <= 0) {
+            cancelAnimationFrame(animationId);
+            return;
+        }
 
-        // Scale the initial position directly to create uniform expansion
-        positionsArray[i3] = x * expansionFactor;
-        positionsArray[i3+1] = y * expansionFactor;
-        positionsArray[i3+2] = z * expansionFactor;
-
-        const distance = Math.sqrt(
-            positionsArray[i3]**2 + positionsArray[i3+1]**2 + positionsArray[i3+2]**2
-        );
-
-        // Get the base color
-        const baseColor = new THREE.Color(baseColorsArray[i3], baseColorsArray[i3+1], baseColorsArray[i3+2]);
-
-        // Determine the redshift color (blue to red)
-        const colorRatio = Math.min(distance / maxExpansion, 1.0);
-        redshiftColor.setRGB(colorRatio, 0, 1 - colorRatio);
-
-        // Blend base color with redshift color
-        baseColor.lerp(redshiftColor, colorRatio * 0.8); // Stronger redshift effect on color
-
-        colorsArray[i3] = baseColor.r;
-        colorsArray[i3 + 1] = baseColor.g;
-        colorsArray[i3 + 2] = baseColor.b;
+        const positionsArray = particles.geometry.attributes.position.array;
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            positionsArray[i3] += velocities.array[i3];
+            positionsArray[i3 + 1] += velocities.array[i3+1];
+            positionsArray[i3 + 2] += velocities.array[i3+2];
+        }
+        particles.geometry.attributes.position.needsUpdate = true;
     }
 
-    particles.geometry.attributes.position.needsUpdate = true;
-    particles.geometry.attributes.color.needsUpdate = true;
+    // Common rendering logic, but position/color updates only happen during expansion for now
+    if (animationState === 'expanding') {
+        const positionsArray = particles.geometry.attributes.position.array;
+        const colorsArray = particles.geometry.attributes.color.array;
+        const baseColorsArray = particles.geometry.attributes.baseColor.array;
+        const redshiftColor = new THREE.Color();
+
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+
+            const x = initialPositions[i3];
+            const y = initialPositions[i3 + 1];
+            const z = initialPositions[i3 + 2];
+
+            // Scale the initial position directly to create uniform expansion
+            positionsArray[i3] = x * expansionFactor;
+            positionsArray[i3+1] = y * expansionFactor;
+            positionsArray[i3+2] = z * expansionFactor;
+
+            const distance = Math.sqrt(
+                positionsArray[i3]**2 + positionsArray[i3+1]**2 + positionsArray[i3+2]**2
+            );
+
+            // Get the base color
+            const baseColor = new THREE.Color(baseColorsArray[i3], baseColorsArray[i3+1], baseColorsArray[i3+2]);
+
+            // Determine the redshift color (blue to red)
+            const colorRatio = Math.min(distance / maxExpansion, 1.0);
+            redshiftColor.setRGB(colorRatio, 0, 1 - colorRatio);
+
+            // Blend base color with redshift color
+            baseColor.lerp(redshiftColor, colorRatio * 0.8); // Stronger redshift effect on color
+
+            colorsArray[i3] = baseColor.r;
+            colorsArray[i3 + 1] = baseColor.g;
+            colorsArray[i3 + 2] = baseColor.b;
+        }
+
+        particles.geometry.attributes.position.needsUpdate = true;
+        particles.geometry.attributes.color.needsUpdate = true;
+    }
 
     controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
-
     renderer.render(scene, camera);
 }
 
