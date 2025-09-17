@@ -18,26 +18,53 @@ scene.background = new THREE.Color(0x000000);
 const particleCount = 10000;
 const geometry = new THREE.BufferGeometry();
 const positions = new Float32Array(particleCount * 3); // x, y, z
-const colors = new Float32Array(particleCount * 3); // r, g, b
+const colors = new Float32Array(particleCount * 3); // r, g, b (final color)
+const baseColors = new Float32Array(particleCount * 3); // r, g, b (initial random color)
 
 const color = new THREE.Color();
 
-for (let i = 0; i < particleCount; i++) {
-    // Initial position (close to the center)
-    const i3 = i * 3;
-    positions[i3] = (Math.random() - 0.5) * 0.1;
-    positions[i3 + 1] = (Math.random() - 0.5) * 0.1;
-    positions[i3 + 2] = (Math.random() - 0.5) * 0.1;
+// --- Cosmic Web Structure ---
+const clusterCount = 7;
+const clusterCenters = [];
+const clusterSpread = 1.0; // How spread out the cluster centers are
+for (let i = 0; i < clusterCount; i++) {
+    clusterCenters.push(
+        new THREE.Vector3(
+            (Math.random() - 0.5) * clusterSpread,
+            (Math.random() - 0.5) * clusterSpread,
+            (Math.random() - 0.5) * clusterSpread
+        )
+    );
+}
 
-    // Initial color (will be updated in animation loop)
-    color.set(0xffffff); // Start as white
-    colors[i3] = color.r;
-    colors[i3 + 1] = color.g;
-    colors[i3 + 2] = color.b;
+const particleSpread = 0.2; // How spread out particles are within a cluster
+for (let i = 0; i < particleCount; i++) {
+    const i3 = i * 3;
+
+    // Pick a random cluster and generate a position near it
+    const cluster = clusterCenters[Math.floor(Math.random() * clusterCount)];
+
+    positions[i3] = cluster.x + (Math.random() - 0.5) * particleSpread;
+    positions[i3 + 1] = cluster.y + (Math.random() - 0.5) * particleSpread;
+    positions[i3 + 2] = cluster.z + (Math.random() - 0.5) * particleSpread;
+
+    // Assign a random base color (variations of white)
+    const baseColor = new THREE.Color(0xffffff);
+    baseColor.lerp(new THREE.Color(Math.random() * 0xffffff), 0.1);
+
+    baseColors[i3] = baseColor.r;
+    baseColors[i3 + 1] = baseColor.g;
+    baseColors[i3 + 2] = baseColor.b;
+
+    // Set initial color
+    colors[i3] = baseColor.r;
+    colors[i3 + 1] = baseColor.g;
+    colors[i3 + 2] = baseColor.b;
 }
 
 geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+geometry.setAttribute('baseColor', new THREE.BufferAttribute(baseColors, 3));
 
 const material = new THREE.PointsMaterial({
     size: 0.1,
@@ -73,6 +100,7 @@ let animationId;
 function animate() {
     // Stop after 30 seconds
     if (clock.getElapsedTime() > 30) {
+        particles.visible = false; // Make particles disappear
         cancelAnimationFrame(animationId);
         return;
     }
@@ -84,6 +112,9 @@ function animate() {
 
     const positionsArray = particles.geometry.attributes.position.array;
     const colorsArray = particles.geometry.attributes.color.array;
+    const baseColorsArray = particles.geometry.attributes.baseColor.array;
+
+    const redshiftColor = new THREE.Color();
 
     for (let i = 0; i < particleCount; i++) {
         const i3 = i * 3;
@@ -102,14 +133,19 @@ function animate() {
             positionsArray[i3]**2 + positionsArray[i3+1]**2 + positionsArray[i3+2]**2
         );
 
-        // Color based on distance (blue=close, red=far)
-        const colorRatio = Math.min(distance / maxExpansion, 1.0);
-        const blue = 1 - colorRatio;
-        const red = colorRatio;
+        // Get the base color
+        const baseColor = new THREE.Color(baseColorsArray[i3], baseColorsArray[i3+1], baseColorsArray[i3+2]);
 
-        colorsArray[i3] = red;
-        colorsArray[i3 + 1] = 0;
-        colorsArray[i3 + 2] = blue;
+        // Determine the redshift color (blue to red)
+        const colorRatio = Math.min(distance / maxExpansion, 1.0);
+        redshiftColor.setRGB(colorRatio, 0, 1 - colorRatio);
+
+        // Blend base color with redshift color
+        baseColor.lerp(redshiftColor, colorRatio * 0.8); // Stronger redshift effect on color
+
+        colorsArray[i3] = baseColor.r;
+        colorsArray[i3 + 1] = baseColor.g;
+        colorsArray[i3 + 2] = baseColor.b;
     }
 
     particles.geometry.attributes.position.needsUpdate = true;
