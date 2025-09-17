@@ -64,37 +64,23 @@ controls.dampingFactor = 0.05;
 
 // Animation state
 let expansionFactor = 0.01;
-let state = 'expanding'; // 'expanding' or 'contracting'
-const maxExpansion = 100.0;
-const expansionSpeed = 0.005;
-const contractionSpeed = 0.01;
+const maxExpansion = 100.0; // We can use this to normalize color
+const expansionSpeed = 0.055;
 
 const clock = new THREE.Clock();
+let animationId;
 
 function animate() {
-    requestAnimationFrame(animate);
-
-    const delta = clock.getDelta();
-
-    // Update state
-    if (state === 'expanding') {
-        expansionFactor += expansionSpeed;
-        if (expansionFactor >= maxExpansion) {
-            state = 'contracting';
-        }
-    } else { // contracting
-        expansionFactor -= contractionSpeed;
-        if (expansionFactor <= 0.01) {
-            state = 'expanding';
-            // Reset positions for the new "bang"
-             for (let i = 0; i < particleCount; i++) {
-                const i3 = i * 3;
-                positions[i3] = (Math.random() - 0.5) * 0.1;
-                positions[i3 + 1] = (Math.random() - 0.5) * 0.1;
-                positions[i3 + 2] = (Math.random() - 0.5) * 0.1;
-            }
-        }
+    // Stop after 30 seconds
+    if (clock.getElapsedTime() > 30) {
+        cancelAnimationFrame(animationId);
+        return;
     }
+
+    animationId = requestAnimationFrame(animate);
+
+    // Always expanding
+    expansionFactor += expansionSpeed;
 
     const positionsArray = particles.geometry.attributes.position.array;
     const colorsArray = particles.geometry.attributes.color.array;
