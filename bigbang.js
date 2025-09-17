@@ -61,6 +61,9 @@ for (let i = 0; i < particleCount; i++) {
     colors[i3 + 2] = baseColor.b;
 }
 
+// Create a read-only copy of initial positions for reference
+const initialPositions = new Float32Array(positions);
+
 geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 geometry.setAttribute('baseColor', new THREE.BufferAttribute(baseColors, 3));
@@ -119,9 +122,9 @@ function animate() {
     for (let i = 0; i < particleCount; i++) {
         const i3 = i * 3;
 
-        const x = positions[i3];
-        const y = positions[i3 + 1];
-        const z = positions[i3 + 2];
+        const x = initialPositions[i3];
+        const y = initialPositions[i3 + 1];
+        const z = initialPositions[i3 + 2];
 
         // Scale the initial position directly to create uniform expansion
         positionsArray[i3] = x * expansionFactor;
