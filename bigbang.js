@@ -48,9 +48,8 @@ for (let i = 0; i < particleCount; i++) {
     positions[i3 + 1] = cluster.y + (Math.random() - 0.5) * particleSpread;
     positions[i3 + 2] = cluster.z + (Math.random() - 0.5) * particleSpread;
 
-    // Assign a random base color (variations of white)
-    const baseColor = new THREE.Color(0xffffff);
-    baseColor.lerp(new THREE.Color(Math.random() * 0xffffff), 0.1);
+    // Assign a fully random base color
+    const baseColor = new THREE.Color(Math.random() * 0xffffff);
 
     baseColors[i3] = baseColor.r;
     baseColors[i3 + 1] = baseColor.g;
@@ -101,6 +100,7 @@ function animate() {
     // Stop after 30 seconds
     if (clock.getElapsedTime() > 30) {
         particles.visible = false; // Make particles disappear
+        renderer.render(scene, camera); // Final render to show the disappearance
         cancelAnimationFrame(animationId);
         return;
     }
@@ -123,11 +123,10 @@ function animate() {
         const y = positions[i3 + 1];
         const z = positions[i3 + 2];
 
-        const initialVector = new THREE.Vector3(x, y, z).normalize();
-
-        positionsArray[i3] = initialVector.x * expansionFactor;
-        positionsArray[i3+1] = initialVector.y * expansionFactor;
-        positionsArray[i3+2] = initialVector.z * expansionFactor;
+        // Scale the initial position directly to create uniform expansion
+        positionsArray[i3] = x * expansionFactor;
+        positionsArray[i3+1] = y * expansionFactor;
+        positionsArray[i3+2] = z * expansionFactor;
 
         const distance = Math.sqrt(
             positionsArray[i3]**2 + positionsArray[i3+1]**2 + positionsArray[i3+2]**2
