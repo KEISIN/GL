@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createNoise3D } from 'simplex-noise';
-
 // Initialize the scene, camera, and renderer
 const scene = new THREE.Scene();
 
@@ -143,8 +142,8 @@ function animate() {
         for (let i = 0; i < particleCount; i++) {
             const i3 = i * 3;
             positionsArray[i3] += velocities.array[i3];
-            positionsArray[i3 + 1] += velocities.array[i3+1];
-            positionsArray[i3 + 2] += velocities.array[i3+2];
+            positionsArray[i3 + 1] += velocities.array[i3 + 1];
+            positionsArray[i3 + 2] += velocities.array[i3 + 2];
         }
         particles.geometry.attributes.position.needsUpdate = true;
     }
@@ -165,15 +164,15 @@ function animate() {
 
             // Scale the initial position directly to create uniform expansion
             positionsArray[i3] = x * expansionFactor;
-            positionsArray[i3+1] = y * expansionFactor;
-            positionsArray[i3+2] = z * expansionFactor;
+            positionsArray[i3 + 1] = y * expansionFactor;
+            positionsArray[i3 + 2] = z * expansionFactor;
 
             const distance = Math.sqrt(
-                positionsArray[i3]**2 + positionsArray[i3+1]**2 + positionsArray[i3+2]**2
+                positionsArray[i3] ** 2 + positionsArray[i3 + 1] ** 2 + positionsArray[i3 + 2] ** 2
             );
 
             // Get the base color
-            const baseColor = new THREE.Color(baseColorsArray[i3], baseColorsArray[i3+1], baseColorsArray[i3+2]);
+            const baseColor = new THREE.Color(baseColorsArray[i3], baseColorsArray[i3 + 1], baseColorsArray[i3 + 2]);
 
             // Determine the redshift color (blue to red)
             const colorRatio = Math.min(distance / maxExpansion, 1.0);
