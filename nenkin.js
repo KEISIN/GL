@@ -2,26 +2,53 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 /**
- * 粘菌のライフサイクルの一連の流れを管理するクラス
+ * @file 粘菌のライフサイクルシミュレーションのメインロジックです。
+ * `SlimeMoldCycle` クラスが個々の粘菌のライフサイクルを、
+ * `Simulation` クラスが全体のシーンとアニメーションを管理します。
+ */
+
+/**
+ * 個々の粘菌のライフサイクル（ワーム→アメーバ→きのこ→胞子→菌糸）を管理するクラスです。
+ * 各フェーズのアニメーションと状態遷移を担当します。
  */
 class SlimeMoldCycle {
+  /**
+   * @param {THREE.Scene} scene - 3Dオブジェクトが配置されるシーン。
+   * @param {THREE.Vector3} [basePos=new THREE.Vector3()] - このインスタンスの活動中心座標。
+   * @param {number} [color=0xffe066] - このインスタンスの基本色。
+   */
   constructor(scene, basePos = new THREE.Vector3(), color = 0xffe066) {
     this.scene = scene;
     this.basePos = basePos.clone();
     this.color = color;
+
+    /** @type {number} 現在のライフサイクルフェーズID。0:ワーム, 2:胞子放出, 3:菌糸成長, 5:菌糸集合 */
     this.phase = 0;
+    /** @type {number} 現在のフェーズが開始してからの経過時間。 */
     this.phaseTime = 0;
+
     this.WORM_SEGMENTS = 18;
     this.wormHeadPos = this.basePos.clone().add(new THREE.Vector3(0, 1.5, 0));
     this.wormPath = [this.wormHeadPos.clone()];
+
+    /** @type {THREE.Mesh[]} ワームの体を構成する球体メッシュの配列。 */
     this.wormSpheres = [];
+    /** @type {object[]} 放出された胞子の情報を持つオブジェクトの配列。 */
     this.spores = [];
+    /** @type {THREE.Mesh | null} きのこの傘部分のメッシュ。 */
     this.mushroomCap = null;
+    /** @type {THREE.Mesh | null} きのこの茎部分のメッシュ。 */
     this.mushroomStem = null;
+    /** @type {object[]} 菌糸の情報を持つオブジェクトの配列。 */
     this.myceliumLines = [];
+
     this._initObjects();
   }
 
+  /**
+   * シミュレーション開始時に必要なオブジェクトを初期化します。
+   * @private
+   */
   _initObjects() {
     const sphereGeo = new THREE.SphereGeometry(1.5, 32, 32);
     const sphereMat = new THREE.MeshStandardMaterial({
@@ -55,6 +82,9 @@ class SlimeMoldCycle {
     }
   }
 
+  /**
+   * このインスタンスに関連するすべての3Dオブジェクトをシーンから削除し、メモリを解放します。
+   */
   dispose() {
     this.scene.remove(this.amoeba);
     this.amoeba.geometry.dispose();
@@ -81,6 +111,11 @@ class SlimeMoldCycle {
     });
   }
 
+  /**
+   * ワームが集合し、きのこに変形・成長するフェーズのアニメーション。
+   * @param {number} t - 全体の経過時間。
+   * @private
+   */
   _animatePhase0_WormAndMushroom(t) {
     let gatherTime = 12.0, morphStart = 18.0, morphEnd = 24.0, growthEndTime = morphEnd + 8.0;
 
@@ -141,6 +176,12 @@ class SlimeMoldCycle {
     }
   }
 
+  /**
+   * ワーム球体をきのこの形状に変形させるアニメーションのヘルパーメソッド。
+   * @param {number} morph - 変形の進行度 (0-1)。
+   * @param {THREE.Vector3} amoebaCenter - アメーバの中心座標。
+   * @private
+   */
   _animateMorphToMushroom(morph, amoebaCenter) {
     const stemHeight = 3;
     const stemRadius = 0.35;
@@ -196,6 +237,11 @@ class SlimeMoldCycle {
     this.mushroomStem.scale.y = morph; this.mushroomCap.scale.set(morph, morph * 0.6, morph);
   }
 
+  /**
+   * 胞子放出フェーズのアニメーション。
+   * @param {number} dt - デルタタイム。
+   * @private
+   */
   _animatePhase2_SporeRelease(dt) {
     let allGone = true;
     this.spores.forEach(s => {
@@ -222,6 +268,10 @@ class SlimeMoldCycle {
     }
   }
 
+  /**
+   * 菌糸成長フェーズのアニメーション。
+   * @private
+   */
   _animatePhase3_MyceliumGrowth() {
     let grow = Math.min(1, this.phaseTime / 3.0);
     const originPos = this.basePos.clone();
@@ -250,10 +300,13 @@ class SlimeMoldCycle {
     }
   }
 
+  /**
+   * 菌糸が集合してアメーバになるフェーズのアニメーション。
+   * @private
+   */
   _animatePhase5_MyceliumGather() {
       let gatherProgress = Math.min(1, this.phaseTime / 2.0); // 2 seconds to gather
 
-      // Make amoeba appear and grow
       if (!this.amoeba) {
         const sphereGeo = new THREE.SphereGeometry(1.5, 32, 32);
         const sphereMat = new THREE.MeshStandardMaterial({ color: this.color, roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0, emissive: this.color, emissiveIntensity: 0.5 });
@@ -265,7 +318,6 @@ class SlimeMoldCycle {
       this.amoeba.material.opacity = gatherProgress;
       this.amoeba.scale.setScalar(gatherProgress * 1.5);
 
-      // Shrink mycelium
       this.myceliumLines.forEach(line => {
           if (line.mesh) {
               const currentLen = (1 - gatherProgress) * 15.0;
@@ -297,7 +349,11 @@ class SlimeMoldCycle {
       }
   }
 
-
+  /**
+   * フレームごとのメインアニメーション処理。現在のフェーズに応じて適切なメソッドを呼び出す。
+   * @param {number} t - 全体の経過時間。
+   * @param {number} dt - デルタタイム。
+   */
   animate(t, dt) {
     this.phaseTime += dt;
     switch (this.phase) {
@@ -313,16 +369,29 @@ class SlimeMoldCycle {
  * Three.jsのシーンやレンダリング、全体のシミュレーションを管理するクラス
  */
 class Simulation {
+  /**
+   * Simulationクラスのコンストラクタ。
+   */
   constructor() {
+    /** @type {THREE.Scene} */
     this.scene = new THREE.Scene();
+    /** @type {THREE.PerspectiveCamera} */
     this.camera = new THREE.PerspectiveCamera(60, 1024 / 568, 0.1, 1000);
+    /** @type {THREE.WebGLRenderer} */
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    /** @type {OrbitControls} */
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    /** @type {SlimeMoldCycle[]} */
     this.cycles = [];
+    /** @type {number[]} */
     this.cycleStartOffsets = [];
     this._setup();
   }
 
+  /**
+   * シミュレーション全体のセットアップ。
+   * @private
+   */
   _setup() {
     this._setupScene();
     this._setupLights();
@@ -331,6 +400,10 @@ class Simulation {
     this._setupEventListeners();
   }
 
+  /**
+   * シーンとカメラの初期設定。
+   * @private
+   */
   _setupScene() {
     this.scene.background = new THREE.Color(0x228b22);
     this.camera.position.set(0, 5, 18);
@@ -345,6 +418,10 @@ class Simulation {
     renderDiv.appendChild(this.renderer.domElement);
   }
 
+  /**
+   * 照明のセットアップ。
+   * @private
+   */
   _setupLights() {
     const light = new THREE.DirectionalLight(0xffffff, 1.2);
     light.position.set(10, 20, 10);
@@ -352,12 +429,20 @@ class Simulation {
     this.scene.add(new THREE.AmbientLight(0x8888aa, 0.7));
   }
 
+  /**
+   * 地面のグリッドのセットアップ。
+   * @private
+   */
   _setupGround() {
     const grid = new THREE.GridHelper(40, 40, 0x888888, 0x444444);
     grid.position.y = 0.01;
     this.scene.add(grid);
   }
 
+  /**
+   * 粘菌インスタンスの初期化。
+   * @private
+   */
   _setupInstances() {
     const center = new THREE.Vector3(0, 0, 0);
     const radius = 3.5;
@@ -374,14 +459,24 @@ class Simulation {
     }
   }
 
+  /**
+   * イベントリスナーのセットアップ。
+   * @private
+   */
   _setupEventListeners() {
     window.addEventListener("resize", () => this.onWindowResize());
   }
 
+  /**
+   * アニメーションループを開始する。
+   */
   start() {
     this.animate();
   }
 
+  /**
+   * メインのアニメーションループ。
+   */
   animate = () => {
     requestAnimationFrame(this.animate);
     this.controls.update();
@@ -393,6 +488,9 @@ class Simulation {
     this.renderer.render(this.scene, this.camera);
   }
 
+  /**
+   * ウィンドウリサイズ時の処理。
+   */
   onWindowResize() {
     this.renderer.setSize(1024, 568);
     this.camera.aspect = 1024 / 568;
@@ -400,6 +498,7 @@ class Simulation {
   }
 }
 
+// --- メイン処理 ---
 window.addEventListener('DOMContentLoaded', () => {
     const simulation = new Simulation();
     simulation.start();
