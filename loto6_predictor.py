@@ -1,6 +1,13 @@
 import pandas as pd
 import numpy as np
 import openpyxl
+import tensorflow as tf
+import os
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
+from keras.callbacks import EarlyStopping
+import matplotlib.pyplot as plt
 
 def create_dummy_data(num_records=1000, file_path='dummy_loto6.xlsx'):
     """
@@ -47,12 +54,6 @@ def create_dummy_data(num_records=1000, file_path='dummy_loto6.xlsx'):
     # xlsxファイルとして保存
     df.to_excel(file_path, index=False, engine='openpyxl')
     print(f"ダミーデータを {file_path} に保存しました。（テスト用の無効なデータを含む）")
-
-from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping
-import matplotlib.pyplot as plt
 
 def load_and_preprocess_data(file_path='dummy_loto6.xlsx', sequence_length=5):
     """
@@ -122,14 +123,20 @@ def build_model(input_shape):
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
 
+def is_drive_mounted():
+    return os.path.exists('/content/drive/MyDrive')
+
 if __name__ == '__main__':
+    if not is_drive_mounted():
+        from google.colab import drive
+        drive.mount('/content/drive')
     # --- 設定 ---
     # 実際のLOTO6データが入ったExcelファイルのパスを指定してください。
     # このパスが空欄の場合、プログラムは自動でダミーデータを生成して実行します。
     # 例: FILE_PATH = 'C:/Users/YourUser/Documents/loto6_data.xlsx'
-    FILE_PATH = '' # ← ここに実際のファイルのパスを入力
+    FILE_PATH = '/content/drive/MyDrive/tf_models/loto6.xlsx' # ← ここに実際のファイルのパスを入力
 
-    SEQUENCE_LENGTH = 5  # 過去何回分のデータを使って次を予測するか
+    SEQUENCE_LENGTH = 1500  # 過去何回分のデータを使って次を予測するか
 
     # --- 処理開始 ---
 
@@ -194,3 +201,4 @@ if __name__ == '__main__':
         predicted_numbers = predict_next_numbers(model, X, scaler)
         print("\n次回の予測当選番号:")
         print(predicted_numbers)
+
